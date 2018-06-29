@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	sc "github.com/hyperledger/fabric/protos/peer"
+	"golang.org/x/crypto/sha3"
 	//"golang.org/x/crypto/sha3"
 )
 
@@ -19,6 +22,7 @@ type Transaction struct {
 	Amount                   string `json:"amount"`
 	Status                   Status `json:"status"`
 	Currency                 string `json:"currency"`
+	ValueDate                string `json:"valuedate"`
 }
 
 // Status is used to control the state of the transaction
@@ -65,4 +69,36 @@ func main() {
 	if err != nil {
 		fmt.Printf("error creating new Smart Contract: %s", err)
 	}
+}
+
+func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
+	if len(args) != 6 {
+		return nil, new.Errors("Incorrect number of parameters to create a new pending transaction.")
+	}
+	newTran := Transaction{}
+	newTran.OriginBankCode = args[0]
+	newTran.OriginAccountNumber = args[1]
+	newTran.DestinationBankCode = args[2]
+	newTran.DestinationAccountNumber = args[3]
+	newTran.Amount = args[4]
+	newTran.Currency = args[5]
+	newTran.ValueDate = time.Now().Format(time.Stamp)
+	newTran.Status = Pending
+	tranJson, err := json.Marshal(newTran)
+	if err != nil {
+		return nil, err
+	}
+	tranCode := toHash(string(tranJson))
+	err = APIstub.PutState(tranCode, tranJson)
+	if err != nil {
+		return nil, err
+	}
+	return "Success", nil
+}
+
+func toHash(input string) string {
+	toencrypt := []byte(input)
+	hashkey := sha3.Sum256(toencrypt)
+	strhashkey := fmt.Sprintf("%x", hashkey)
+	return strhashkey
 }
