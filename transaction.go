@@ -73,8 +73,9 @@ func main() {
 
 func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
 	if len(args) != 6 {
-		return nil, new.Errors("Incorrect number of parameters to create a new pending transaction.")
+		return nil, new.Errors("incorrect number of parameters to create a new pending transaction")
 	}
+
 	newTran := Transaction{}
 	newTran.OriginBankCode = args[0]
 	newTran.OriginAccountNumber = args[1]
@@ -90,6 +91,36 @@ func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string
 	}
 	tranCode := toHash(string(tranJson))
 	err = APIstub.PutState(tranCode, tranJson)
+	if err != nil {
+		return nil, err
+	}
+	return "Success", nil
+}
+
+func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
+	if len(args) != 1 {
+		return nil, new.Errors("incorrect number of parameters to confirm a pending transaction")
+	}
+	myKey := args[0]
+	tranAsBytes, err := APIstub.GetState(myKey)
+	if err != nil {
+		return nil, err
+	}
+	myTran := Transaction{}
+	err = json.Unmarshal(tranAsBytes, &myTran)
+	if err != nil {
+		return nil, err
+	}
+	if myTran.Status == Pending {
+		myTran.Status = Confirmed
+	} else {
+		return nil, Errors.new("transaction is not pending for confirmation")
+	}
+	myByteTran, err := json.Marshal(myTran)
+	if err != nil {
+		return nil, err
+	}
+	err = APIstub.PutState(myKey, myByteTran)
 	if err != nil {
 		return nil, err
 	}
