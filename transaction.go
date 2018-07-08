@@ -51,8 +51,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		response, err = CreatePendingTransaction(APIstub, args)
 	case "ConfirmTransaction":
 		response, err = ConfirmTransaction(APIstub, args)
-	case "RemovePendingTransaction":
-		response, err = RemovePendingTransaction(APIstub, args)
+	case "TimeoutPendingTransaction":
+		response, err = TimeoutPendingTransaction(APIstub, args)
 	case "GetPendingTransactions":
 		response, err = GetPendingTransactions(APIstub, args)
 	}
@@ -113,6 +113,36 @@ func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) (str
 	}
 	if myTran.Status == Pending {
 		myTran.Status = Confirmed
+	} else {
+		return nil, Errors.new("transaction is not pending for confirmation")
+	}
+	myByteTran, err := json.Marshal(myTran)
+	if err != nil {
+		return nil, err
+	}
+	err = APIstub.PutState(myKey, myByteTran)
+	if err != nil {
+		return nil, err
+	}
+	return "Success", nil
+}
+
+func TimeoutPendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
+	if len(args) != 1 {
+		return nil, new.Errors("incorrect number of parameters to confirm a pending transaction")
+	}
+	myKey := args[0]
+	tranAsBytes, err := APIstub.GetState(myKey)
+	if err != nil {
+		return nil, err
+	}
+	myTran := Transaction{}
+	err = json.Unmarshal(tranAsBytes, &myTran)
+	if err != nil {
+		return nil, err
+	}
+	if myTran.Status == Pending {
+		myTran.Status = Timeout
 	} else {
 		return nil, Errors.new("transaction is not pending for confirmation")
 	}
