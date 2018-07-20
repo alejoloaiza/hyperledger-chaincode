@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -71,9 +72,9 @@ func main() {
 	}
 }
 
-func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
+func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 6 {
-		return nil, new.Errors("incorrect number of parameters to create a new pending transaction")
+		return nil, errors.New("incorrect number of parameters to create a new pending transaction")
 	}
 
 	newTran := Transaction{}
@@ -94,12 +95,12 @@ func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string
 	if err != nil {
 		return nil, err
 	}
-	return "Success", nil
+	return []byte("Success"), nil
 }
 
-func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
+func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 1 {
-		return nil, new.Errors("incorrect number of parameters to confirm a pending transaction")
+		return nil, errors.New("incorrect number of parameters to confirm a pending transaction")
 	}
 	myKey := args[0]
 	tranAsBytes, err := APIstub.GetState(myKey)
@@ -114,7 +115,7 @@ func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) (str
 	if myTran.Status == Pending {
 		myTran.Status = Confirmed
 	} else {
-		return nil, Errors.new("transaction is not pending for confirmation")
+		return nil, errors.New("transaction is not pending for confirmation")
 	}
 	myByteTran, err := json.Marshal(myTran)
 	if err != nil {
@@ -124,12 +125,12 @@ func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) (str
 	if err != nil {
 		return nil, err
 	}
-	return "Success", nil
+	return []byte("Success"), nil
 }
 
-func TimeoutPendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) (string, error) {
+func TimeoutPendingTransaction(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 1 {
-		return nil, new.Errors("incorrect number of parameters to confirm a pending transaction")
+		return nil, errors.New("incorrect number of parameters to confirm a pending transaction")
 	}
 	myKey := args[0]
 	tranAsBytes, err := APIstub.GetState(myKey)
@@ -144,7 +145,7 @@ func TimeoutPendingTransaction(APIstub shim.ChaincodeStubInterface, args []strin
 	if myTran.Status == Pending {
 		myTran.Status = Timeout
 	} else {
-		return nil, Errors.new("transaction is not pending for confirmation")
+		return nil, errors.New("transaction is not pending for confirmation")
 	}
 	myByteTran, err := json.Marshal(myTran)
 	if err != nil {
@@ -154,7 +155,7 @@ func TimeoutPendingTransaction(APIstub shim.ChaincodeStubInterface, args []strin
 	if err != nil {
 		return nil, err
 	}
-	return "Success", nil
+	return []byte("Success"), nil
 }
 
 func toHash(input string) string {
