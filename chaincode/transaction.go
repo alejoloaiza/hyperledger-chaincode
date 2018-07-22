@@ -26,6 +26,11 @@ type Transaction struct {
 	ValueDate                string `json:"valuedate"`
 }
 
+type TransactionsList struct {
+	Key       string      `json:"key"`
+	ValueList Transaction `json:"transaction"`
+}
+
 // Status is used to control the state of the transaction
 type Status string
 
@@ -163,4 +168,30 @@ func toHash(input string) string {
 	hashkey := sha3.Sum256(toencrypt)
 	strhashkey := fmt.Sprintf("%x", hashkey)
 	return strhashkey
+}
+
+// GetPendingTransactions is used to fetch all transaction with status pending.
+func GetPendingTransactions(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	TxList := []TransactionsList{}
+	query := fmt.Sprintf(`{ "selector":{ "status": { "$eq": "%s" } } } `, Pending)
+	ResultStates, err := APIstub.GetQueryResult(query)
+	defer ResultStates.Close()
+	for ResultStates.HasNext() {
+		QueryRecord, err := ResultStates.Next()
+		myList := TransactionsList{}
+		myTx := Transaction{}
+		err = json.Unmarshal(QueryRecord.Value, &myTx)
+		myList.ValueList = myTx
+		myList.Key = QueryRecord.Key
+		if err != nil {
+			return nil, err
+		}
+		TxList = append(TxList, myList)
+	}
+	TxListAsBytes, err := json.Marshal(TxList)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("%v \n", string(TxListAsBytes))
+	return TxListAsBytes, nil
 }
