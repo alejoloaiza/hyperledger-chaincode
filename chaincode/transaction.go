@@ -81,7 +81,6 @@ func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string
 	if len(args) != 6 {
 		return nil, errors.New("incorrect number of parameters to create a new pending transaction")
 	}
-
 	newTran := Transaction{}
 	newTran.OriginBankCode = args[0]
 	newTran.OriginAccountNumber = args[1]
@@ -100,6 +99,7 @@ func CreatePendingTransaction(APIstub shim.ChaincodeStubInterface, args []string
 	if err != nil {
 		return nil, err
 	}
+	APIstub.SetEvent("Pending", []byte("Transaction pending"))
 	return []byte("Success"), nil
 }
 
@@ -130,6 +130,7 @@ func ConfirmTransaction(APIstub shim.ChaincodeStubInterface, args []string) ([]b
 	if err != nil {
 		return nil, err
 	}
+	APIstub.SetEvent("Confirmed", []byte("Transaction confirmed"))
 	return []byte("Success"), nil
 }
 
@@ -194,4 +195,32 @@ func GetPendingTransactions(APIstub shim.ChaincodeStubInterface, args []string) 
 	}
 	fmt.Printf("%v \n", string(TxListAsBytes))
 	return TxListAsBytes, nil
+}
+
+// GetTxHistory fetches all the history of a transaction
+func GetTxHistory(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	if len(args) != 1 {
+		return nil, errors.New("incorrect number of arguments. Expecting 2")
+	}
+	TranList := []TransactionsList{}
+	KeyHistory, err := APIstub.GetHistoryForKey(args[0])
+	defer KeyHistory.Close()
+	for KeyHistory.HasNext() {
+		HistoryRecord, err := KeyHistory.Next()
+		myTran := TransactionsList{}
+		MyTx := Transaction{}
+		err = json.Unmarshal(HistoryRecord.Value, &MyTx)
+		myTran.ValueList = MyTx
+		myTran.Key = HistoryRecord.TxId
+		if err != nil {
+			return nil, err
+		}
+		TranList = append(TranList, myTran)
+
+	}
+	TranListAsBytes, err := json.Marshal(TranList)
+	if err != nil {
+		return nil, err
+	}
+	return TranListAsBytes, nil
 }
