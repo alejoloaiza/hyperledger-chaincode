@@ -61,6 +61,10 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		response, err = TimeoutPendingTransaction(APIstub, args)
 	case "GetPendingTransactions":
 		response, err = GetPendingTransactions(APIstub, args)
+	case "DeleteConfirmedTransaction":
+		response, err = DeleteConfirmedTransaction(APIstub, args)
+	case "GetTxHistory":
+		response, err = GetTxHistory(APIstub, args)
 	}
 
 	if err != nil {
@@ -223,4 +227,26 @@ func GetTxHistory(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, e
 		return nil, err
 	}
 	return TranListAsBytes, nil
+}
+
+// DeleteConfirmedTransaction deletes the transaction from the world state, everything is recorded in the blockchain.
+func DeleteConfirmedTransaction(APIstub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	query := fmt.Sprintf(`{ "selector":{ "status": { "$eq": "%s" } } } `, Confirmed)
+	ResultStates, err := APIstub.GetQueryResult(query)
+	if err != nil {
+		return nil, err
+	}
+	defer ResultStates.Close()
+	for ResultStates.HasNext() {
+		QueryRecord, err := ResultStates.Next()
+		if err != nil {
+			return nil, err
+		}
+		err = APIstub.DelState(QueryRecord.Key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return []byte("Success"), nil
 }
